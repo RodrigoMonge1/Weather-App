@@ -3,6 +3,7 @@ import './App.css';
 import WeatherCard from './components/WeatherCard';
 import WeatherChart from './components/WeatherChart';
 import FavoritesBar from './components/FavoritesBar';
+import AQIBadge from './components/AQIBadge';
 import useWeather from './hooks/useWeather';
 
 const LS_KEYS = {
@@ -12,12 +13,21 @@ const LS_KEYS = {
 
 function App() {
   const [city, setCity] = useState('');
-  const { weatherData, weeklyData, error, loading, fetchWeather, fetchWeatherByCoords } = useWeather();
+  const {
+    weatherData,
+    weeklyData,
+    aqiData,
+    error,
+    loading,
+    fetchWeather,
+    fetchWeatherByCoords,
+  } = useWeather();
+
   const [units, setUnits] = useState('metric'); // 'metric' | 'imperial'
   const unitSymbol = units === 'metric' ? '°C' : '°F';
-  //const windUnit = units === 'metric' ? 'm/s' : 'mph';
+  const windUnit = units === 'metric' ? 'm/s' : 'mph';
 
-  // Favoritos
+  // Favoritos (array de strings con el nombre de ciudad)
   const [favorites, setFavorites] = useState([]);
 
   // Cargar favoritos y última ciudad al montar
@@ -35,15 +45,14 @@ function App() {
       setCity(last);
       fetchWeather(last, units);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Guardar favoritos
+  // Guardar favoritos cuando cambian
   useEffect(() => {
     localStorage.setItem(LS_KEYS.favorites, JSON.stringify(favorites));
   }, [favorites]);
 
-  // Guardar última ciudad cuando hay resultado
+  // Guardar última ciudad cuando hay resultado válido
   useEffect(() => {
     if (weatherData?.name) {
       localStorage.setItem(LS_KEYS.lastCity, `${weatherData.name}`);
@@ -68,8 +77,6 @@ function App() {
       (pos) => {
         const { latitude, longitude } = pos.coords;
         fetchWeatherByCoords(latitude, longitude, units);
-        // Opcional: limpiar el input para indicar que estamos usando ubicación
-        // setCity('');
       },
       (err) => {
         console.error(err);
@@ -79,7 +86,7 @@ function App() {
     );
   };
 
-  // Clave legible de ciudad actual para favoritos
+  // Clave legible de la ciudad actual para favoritos
   const currentCityKey = weatherData ? `${weatherData.name}` : '';
   const isCurrentFavorite = currentCityKey && favorites.includes(currentCityKey);
 
@@ -150,7 +157,6 @@ function App() {
             <h2 style={{ margin: 0 }}>
               {weatherData.name}, {weatherData.sys.country}
             </h2>
-            {/* Favorito */}
             <button
               onClick={toggleFavorite}
               title={isCurrentFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
@@ -172,11 +178,15 @@ function App() {
             src={`http://openweathermap.org/img/wn/${weatherData.weather[0].icon}.png`}
             alt={weatherData.weather[0].description}
           />
+
           <div className="additional-info">
             <p><strong>Humedad:</strong> {weatherData.main.humidity}%</p>
-            <p><strong>Viento:</strong> {weatherData.wind.speed} {units === 'metric' ? 'm/s' : 'mph'}</p>
+            <p><strong>Viento:</strong> {weatherData.wind.speed} {windUnit}</p>
             <p><strong>Sensación térmica:</strong> {weatherData.main.feels_like}{unitSymbol}</p>
           </div>
+
+          {/* Calidad del aire */}
+          <AQIBadge aqiData={aqiData} />
         </div>
       )}
 
@@ -198,7 +208,7 @@ function App() {
                 windSpeed={dayData.wind?.speed}
                 feelsLike={dayData.main?.feels_like}
                 unitSymbol={unitSymbol}
-                windUnit={units === 'metric' ? 'm/s' : 'mph'}
+                windUnit={windUnit}
               />
             ))}
           </div>
@@ -208,7 +218,7 @@ function App() {
   );
 }
 
-// Formatear nombre de día
+// Utilidad para mostrar nombre del día
 const formatDay = (timestamp) => {
   const date = new Date(timestamp * 1000);
   const days = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
