@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import axios from 'axios';
 import { OWM_API_KEY as API_KEY } from '../config';
 
@@ -26,7 +26,7 @@ const useWeather = () => {
       .slice(0, 7);
   };
 
-  const fetchAQI = async (lat, lon) => {
+  const fetchAQI = useCallback(async (lat, lon) => {
     try {
       const url = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`;
       const { data } = await axios.get(url);
@@ -43,10 +43,9 @@ const useWeather = () => {
       console.error('Error fetching AQI:', e);
       setAqiData(null);
     }
-  };
+  }, []);
 
-  // Por nombre de ciudad
-  const fetchWeather = async (city, units = 'metric') => {
+  const fetchWeather = useCallback(async (city, units = 'metric') => {
     if (!city) return;
     setLoading(true);
     setError('');
@@ -77,10 +76,9 @@ const useWeather = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchAQI]);
 
-  // Por coordenadas (para autocompletado/geolocalización)
-  const fetchWeatherByCoords = async (lat, lon, units = 'metric') => {
+  const fetchWeatherByCoords = useCallback(async (lat, lon, units = 'metric') => {
     if (lat == null || lon == null) return;
     setLoading(true);
     setError('');
@@ -106,7 +104,7 @@ const useWeather = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchAQI]);
 
   return { weatherData, weeklyData, aqiData, error, loading, fetchWeather, fetchWeatherByCoords };
 };

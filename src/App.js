@@ -27,10 +27,8 @@ function App() {
   const unitSymbol = units === 'metric' ? '°C' : '°F';
   const windUnit = units === 'metric' ? 'm/s' : 'mph';
 
-  // Favoritos (array de strings con el nombre de ciudad)
   const [favorites, setFavorites] = useState([]);
 
-  // Cargar favoritos y última ciudad al montar
   useEffect(() => {
     try {
       const favRaw = localStorage.getItem(LS_KEYS.favorites);
@@ -39,20 +37,17 @@ function App() {
     } catch {
       setFavorites([]);
     }
-
     const last = localStorage.getItem(LS_KEYS.lastCity);
     if (last && last.trim()) {
       setCity(last);
       fetchWeather(last, units);
     }
-  }, []);
+  }, [fetchWeather, units]);
 
-  // Guardar favoritos cuando cambian
   useEffect(() => {
     localStorage.setItem(LS_KEYS.favorites, JSON.stringify(favorites));
   }, [favorites]);
 
-  // Guardar última ciudad cuando hay resultado válido
   useEffect(() => {
     if (weatherData?.name) {
       localStorage.setItem(LS_KEYS.lastCity, `${weatherData.name}`);
@@ -67,7 +62,6 @@ function App() {
     if (city) fetchWeather(city, next);
   };
 
-  // Geolocalización
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
       alert('Tu navegador no soporta geolocalización.');
@@ -78,15 +72,11 @@ function App() {
         const { latitude, longitude } = pos.coords;
         fetchWeatherByCoords(latitude, longitude, units);
       },
-      (err) => {
-        console.error(err);
-        alert('No se pudo obtener tu ubicación. Revisa permisos del navegador.');
-      },
+      () => alert('No se pudo obtener tu ubicación. Revisa permisos del navegador.'),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
-  // Clave legible de la ciudad actual para favoritos
   const currentCityKey = weatherData ? `${weatherData.name}` : '';
   const isCurrentFavorite = currentCityKey && favorites.includes(currentCityKey);
 
@@ -103,12 +93,10 @@ function App() {
     setCity(favCity);
     fetchWeather(favCity, units);
   };
-
   const removeFavorite = (favCity) => {
     setFavorites((prev) => prev.filter((c) => c !== favCity));
   };
 
-  // Próximos 6 días (excluye hoy)
   const nextSix = (arr) => {
     if (!Array.isArray(arr) || arr.length === 0) return [];
     return arr.slice(1, 7);
@@ -116,9 +104,10 @@ function App() {
 
   return (
     <div className="weather-container">
-      <h1>Weather App</h1>
+      <h1 className="app-title">Weather App</h1>
+      <p className="subtle">Pronóstico claro y elegante</p>
 
-      {/* Barra de favoritos */}
+      {/* Favoritos */}
       <FavoritesBar
         favorites={favorites}
         onSelect={selectFavorite}
@@ -126,55 +115,49 @@ function App() {
       />
 
       {/* Controles */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <button onClick={toggleUnits}>
+      <div className="controls">
+        <button className="btn" onClick={toggleUnits}>
           Cambiar a {units === 'metric' ? '°F' : '°C'}
         </button>
-        <button onClick={handleUseMyLocation}>
+        <button className="btn secondary" onClick={handleUseMyLocation}>
           Usar mi ubicación
         </button>
       </div>
 
       {/* Búsqueda */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+      <div className="search-row">
         <input
+          className="search-input"
           type="text"
           value={city}
           onChange={(e) => setCity(e.target.value)}
-          placeholder="Ingresa una ciudad"
-          style={{ flex: 1 }}
+          placeholder="Busca una ciudad (p. ej., Lima, PE)"
         />
-        <button onClick={handleSearch} disabled={loading}>Obtener clima</button>
+        <button className="btn" onClick={handleSearch} disabled={loading}>
+          {loading ? 'Cargando...' : 'Obtener clima'}
+        </button>
       </div>
 
       {error && <p className="error">{error}</p>}
-      {loading && <p className="loading">Cargando...</p>}
 
-      {/* Clima de hoy */}
+      {/* Panel HOY */}
       {weatherData && (
-        <div className="weather-info">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center' }}>
-            <h2 style={{ margin: 0 }}>
-              {weatherData.name}, {weatherData.sys.country}
-            </h2>
+        <div className="panel center weather-info">
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <h2>{weatherData.name}, {weatherData.sys.country}</h2>
             <button
+              className="btn secondary"
               onClick={toggleFavorite}
               title={isCurrentFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-              style={{
-                padding: '4px 10px',
-                borderRadius: 6,
-                border: '1px solid #ddd',
-                background: isCurrentFavorite ? '#ffe08a' : 'white',
-                cursor: 'pointer',
-              }}
+              style={{ padding:'6px 10px' }}
             >
               {isCurrentFavorite ? '★' : '☆'}
             </button>
           </div>
 
-          <p>Temperatura: {weatherData.main.temp}{unitSymbol}</p>
-          <p>{weatherData.weather[0].description}</p>
-          <img
+          <p className="meta">Temperatura: <strong>{weatherData.main.temp}{unitSymbol}</strong></p>
+          <p className="meta">{weatherData.weather[0].description}</p>
+          <img className="icon-big"
             src={`http://openweathermap.org/img/wn/${weatherData.weather[0].icon}.png`}
             alt={weatherData.weather[0].description}
           />
@@ -185,23 +168,25 @@ function App() {
             <p><strong>Sensación térmica:</strong> {weatherData.main.feels_like}{unitSymbol}</p>
           </div>
 
-          {/* Calidad del aire */}
+          {/* AQI */}
           <AQIBadge aqiData={aqiData} />
         </div>
       )}
 
       {/* Gráfico semanal */}
       {weeklyData.length > 0 && (
-        <WeatherChart weeklyData={weeklyData} unitSymbol={unitSymbol} />
+        <div className="panel chart-card">
+          <WeatherChart weeklyData={weeklyData} unitSymbol={unitSymbol} />
+        </div>
       )}
 
-      {/* Cards: próximos 6 días */}
+      {/* Próximos 6 días */}
       <div className="weekly-forecast">
-        {weeklyData.length > 1 && (
-          <div className="days-container">
-            {nextSix(weeklyData).map((dayData, index) => (
+        <div className="days-container">
+          {weeklyData.length > 1 &&
+            nextSix(weeklyData).map((dayData, index) => (
               <WeatherCard
-                key={index}
+                key={dayData.dt ?? index}
                 dayData={dayData}
                 formatDay={formatDay}
                 humidity={dayData.main?.humidity}
@@ -210,15 +195,14 @@ function App() {
                 unitSymbol={unitSymbol}
                 windUnit={windUnit}
               />
-            ))}
-          </div>
-        )}
+            ))
+          }
+        </div>
       </div>
     </div>
   );
 }
 
-// Utilidad para mostrar nombre del día
 const formatDay = (timestamp) => {
   const date = new Date(timestamp * 1000);
   const days = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
